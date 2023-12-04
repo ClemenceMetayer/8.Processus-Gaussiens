@@ -23,7 +23,13 @@ def normalize_data(y):
     return y_normalized, y_mean, y_std
 
 
-def interpolation_GP(X_observation, y_observation, type_kernel, type_package, name_specie):
+def denormalize_data(y_normalized, y_mean, y_std):
+    y = (y_normalized*y_std)+y_mean
+
+    return y
+
+
+def interpolation_GP_arn(X_observation, y_observation, type_kernel, type_package, name_specie):
 
     npts = 100
     val_min = X_observation_tensor.min()
@@ -64,20 +70,8 @@ def interpolation_GP(X_observation, y_observation, type_kernel, type_package, na
         mean_per = preds_per.mean
         var_per = preds_per.variance
         
-        with torch.no_grad():
-                fig, axes = plt.subplots(1,1)
-                axes.scatter(X_observation, y_observation, marker='x', color='black') # data
-        
-                axes.plot(t, mean_per, color='darkblue', linewidth=2)
-                axes.fill_between(t, mean_per - 2*torch.sqrt(var_per), mean_per + 2*torch.sqrt(var_per),
-                                   alpha=.2, color='darkblue')
-                axes.set_xlabel('Time $t$ (hours)')
-                axes.set_title(str(name_specie))
-                fig.tight_layout()
-                fig.savefig("results/"+str(name_specie)+".png", dpi=300)
-                plt.show()
     
-                
+    
         print(f'Period: {model_per.covar_module.base_kernel.period_length.item()}')
         print(f'Amplitude: {model_per.covar_module.outputscale.item()}')
         print(f'Lengthscale: {model_per.covar_module.base_kernel.lengthscale.item()}')
@@ -109,8 +103,24 @@ def interpolation_GP(X_observation, y_observation, type_kernel, type_package, na
             fig.tight_layout()
             fig.savefig("results/"+str(name_specie)+".png", dpi=300)
             plt.show()
+            
+    return mean_per, var_per, t
 
     
+def plot_GP(X_observation, y_observation, mean_per, t, var_per, name_specie):
+    with torch.no_grad():
+        fig, axes = plt.subplots(1,1)
+        axes.scatter(X_observation, y_observation, marker='x', color='black') # data
+        
+        axes.plot(t, mean_per, color='darkblue', linewidth=2)
+        axes.fill_between(t, mean_per - 2*torch.sqrt(var_per), mean_per + 2*torch.sqrt(var_per),
+                           alpha=.2, color='darkblue')
+        axes.set_xlabel('Time $t$ (hours)')
+        axes.set_title(str(name_specie))
+        fig.tight_layout()
+        fig.savefig("results/"+str(name_specie)+".png", dpi=300)
+        plt.show()
+
     
 
 # Test RNA-Seq
@@ -141,8 +151,7 @@ for name in list_species :
     # Normalize data
     y_observation_tensor_normalized, y_mean, y_std = normalize_data(y_observation_tensor)
     
-    interpolation_GP(X_observation_tensor, y_observation_tensor_normalized, type_kernel = kernel_method, type_package = package_method, name_specie = name)
-    
-   
+    mean_specie, var_specie, time = interpolation_GP_arn(X_observation_tensor, y_observation_tensor_normalized, type_kernel = kernel_method, type_package = package_method, name_specie = name)
+    plot_GP(X_observation_tensor, y_observation_tensor_normalized, mean_specie, time, var_specie, name)
 
     
