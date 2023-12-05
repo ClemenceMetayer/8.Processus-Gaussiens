@@ -11,7 +11,7 @@ from botorch.fit import fit_gpytorch_model
 from gpytorch.mlls import ExactMarginalLogLikelihood
 from gpytorch.constraints import Interval
 from gpytorch.priors import NormalPrior
-from utils import normalize_data, plot_GP, multiple_plot_GP
+from utils import normalize_data, plot_GP, multiple_plot_GP, denormalize_data
 
 
 def interpolation_GP_arn(X_observation, y_observation, type_kernel, type_package, name_specie):
@@ -29,7 +29,7 @@ def interpolation_GP_arn(X_observation, y_observation, type_kernel, type_package
                                  covar_module=k_per)
             
         elif type_kernel == "Range" :
-            k_per = ScaleKernel(PeriodicKernel(period_length_constraint=Interval(30, 45), lengthscale=10)) # Scale kernel adds the amplitude hyperparameter to the kernel
+            k_per = ScaleKernel(PeriodicKernel(period_length_constraint=Interval(15, 45), lengthscale=10)) # Scale kernel adds the amplitude hyperparameter to the kernel
             model_per = SingleTaskGP(X_observation, y_observation,
                                  covar_module=k_per)
             
@@ -121,14 +121,18 @@ for i, name in enumerate(list_species) :
     # Normalize data
     y_observation_tensor_normalized, y_mean, y_std = normalize_data(y_observation_tensor)
     
-    mean_specie, var_specie, time = interpolation_GP_arn(X_observation_tensor, y_observation_tensor_normalized, type_kernel = kernel_method, type_package = package_method, name_specie = name)
-    plot_GP(X_observation_tensor, y_observation_tensor_normalized, mean_specie, time, var_specie, name, "RNA_Seq")
+    mean_specie_normalized, var_specie_normalized, time = interpolation_GP_arn(X_observation_tensor, y_observation_tensor_normalized, type_kernel = kernel_method, type_package = package_method, name_specie = name)
+    
+    #mean_specie = denormalize_data(mean_specie_normalized, y_mean, y_std)
+    #var_specie = denormalize_data(var_specie_normalized, y_mean, y_std)
+    
+    plot_GP(X_observation_tensor, y_observation_tensor_normalized, mean_specie_normalized, time, var_specie_normalized, name, "RNA_Seq")
 
     res_rna_seq[name]["X_observation_tensor"] = X_observation_tensor
     res_rna_seq[name]["y_observation_tensor_normalized"] = y_observation_tensor_normalized
     res_rna_seq[name]["time"] = time
-    res_rna_seq[name]["mean_specie"] = mean_specie
-    res_rna_seq[name]["var_specie"] = var_specie
+    res_rna_seq[name]["mean_specie"] = mean_specie_normalized
+    res_rna_seq[name]["var_specie"] = var_specie_normalized
     
 multiple_plot_GP(list_species, res_rna_seq, "RNA_Seq")
 
@@ -166,14 +170,18 @@ for i, name in enumerate(list_species) :
     # Normalize data
     y_observation_tensor_normalized, y_mean, y_std = normalize_data(y_observation_tensor)
     
-    mean_specie, var_specie, time = interpolation_GP_arn(X_observation_tensor, y_observation_tensor_normalized, type_kernel = kernel_method, type_package = package_method, name_specie = name)
-    plot_GP(X_observation_tensor, y_observation_tensor_normalized, mean_specie, time, var_specie, name, "Prot")
+    mean_specie_normalized, var_specie_normalized, time = interpolation_GP_arn(X_observation_tensor, y_observation_tensor_normalized, type_kernel = kernel_method, type_package = package_method, name_specie = name)
+    
+    # mean_specie = denormalize_data(mean_specie_normalized, y_mean, y_std)
+    # var_specie = denormalize_data(var_specie_normalized, y_mean, y_std)
+
+    plot_GP(X_observation_tensor, y_observation_tensor_normalized, mean_specie_normalized, time, var_specie_normalized, name, "Prot")
 
     res_prot[name]["X_observation_tensor"] = X_observation_tensor
     res_prot[name]["y_observation_tensor_normalized"] = y_observation_tensor_normalized
     res_prot[name]["time"] = time
-    res_prot[name]["mean_specie"] = mean_specie
-    res_prot[name]["var_specie"] = var_specie
+    res_prot[name]["mean_specie"] = mean_specie_normalized
+    res_prot[name]["var_specie"] = var_specie_normalized
     
 multiple_plot_GP(list_species, res_prot, "Prot")
     
