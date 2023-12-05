@@ -102,26 +102,23 @@ def interpolation_GP_arn(X_observation, y_observation, type_kernel, type_package
     return mean_per, var_per, t
 
     
-def plot_GP(X_observation, y_observation, mean_per, t, var_per, name_specie):
+def plot_GP(X_observation, y_observation, mean_per, t, var_per, name_specie, type_data):
     with torch.no_grad():
-        fig, axes = plt.subplots(1,1)
-        axes.scatter(X_observation, y_observation, marker='x', color='black') # data
-        
-        axes.plot(t, mean_per.detach().numpy(), color='darkblue', linewidth=2)  # Detach the tensor
-        axes.fill_between(t, (mean_per - 2 * torch.sqrt(var_per)).detach().numpy(), 
-                          (mean_per + 2 * torch.sqrt(var_per)).detach().numpy(),
-                          alpha=.2, color='darkblue')
-        axes.set_xlabel('Time $t$ (hours)')
-        axes.set_ylabel('Concentration (nmol/L)')
-        axes.set_title(str(name_specie))
-        fig.tight_layout()
-        fig.savefig("results/"+str(name_specie)+".png", dpi=300)
+        plt.scatter(X_observation, y_observation, marker='x', color='black')  # data
+        plt.plot(t, mean_per.detach().numpy(), color='darkblue', linewidth=2)  # Detach the tensor
+        plt.fill_between(t, (mean_per - 2 * torch.sqrt(var_per)).detach().numpy(),
+                         (mean_per + 2 * torch.sqrt(var_per)).detach().numpy(),
+                         alpha=.2, color='darkblue')
+        plt.xlabel('Time $t$ (hours)')
+        plt.ylabel('Concentration (nmol/L)')
+        plt.title(str(name_specie))
+        plt.tight_layout()
+        plt.savefig("results/" + str(type_data) + "_" + str(name_specie) + ".png", dpi=300)
         plt.show()
-
-    
+        
 
 ############# RNA-SEQ #########################################################
-with open('Jeu_9/data/data_dict_concentration_cc.dat', 'rb') as fichier:
+with open('data/Jeu_9/data/data_dict_concentration_cc.dat', 'rb') as fichier:
     rna_seq_data = pkl.load(fichier)
     
 list_species = ["ARNTL", "CLOCK", "CRY1", "CRY2", "NR1D1", "PER1", "PER2", "PER3", "RORA"]
@@ -151,7 +148,7 @@ for i, name in enumerate(list_species) :
     y_observation_tensor_normalized, y_mean, y_std = normalize_data(y_observation_tensor)
     
     mean_specie, var_specie, time = interpolation_GP_arn(X_observation_tensor, y_observation_tensor_normalized, type_kernel = kernel_method, type_package = package_method, name_specie = name)
-    plot_GP(X_observation_tensor, y_observation_tensor_normalized, mean_specie, time, var_specie, name)
+    plot_GP(X_observation_tensor, y_observation_tensor_normalized, mean_specie, time, var_specie, name, "RNA_Seq")
 
     res_rna_seq[name]["X_observation_tensor"] = X_observation_tensor
     res_rna_seq[name]["y_observation_tensor_normalized"] = y_observation_tensor_normalized
@@ -193,5 +190,81 @@ fig.tight_layout()
 plt.savefig("results/GP_RNA_Seq.png", dpi=300)
 plt.show()
     
+
+############# PROTEINS ########################################################
+with open('data/dict_comparison', 'rb') as fichier:
+    prot_data = pkl.load(fichier)
+    
+list_species = list(prot_data.keys())
+kernel_method = "Range"
+package_method = "Pytorch"
+
+res_prot = {name : {"X_observation_tensor" :{}, "y_observation_tensor_normalized" :{}, "time" :{}, "mean_specie":{}, "var_specie":{}} for name in list_species}
+
+for i, name in enumerate(list_species) : 
+    dataset = [key for key in prot_data[name].keys() if key.startswith('Jeu')]
+    
+    X_observation = np.concatenate([prot_data[name][data]["cts"] for data in dataset])
+    y_observation = np.concatenate([prot_data[name][data]["pts"] for data in dataset])
+
+    # Missing data handling
+    masque_nan = ~np.isnan(y_observation)
+    X_observation_filtre = np.array(X_observation)[masque_nan]
+    y_observation_filtre = y_observation[masque_nan]
+    
+    # Processing
+    X_observation_filtre = np.array([[val] for val in X_observation_filtre])
+    y_observation_filtre = np.array([[val] for val in y_observation_filtre])
+    
+    # Convert lists to PyTorch tensors
+    X_observation_tensor = torch.tensor(X_observation_filtre, dtype=torch.double).view(-1, 1)  # Adjust the view size if necessary
+    y_observation_tensor = torch.tensor(y_observation_filtre, dtype=torch.double).view(-1, 1)  # Adjust the view size if necessary
+
+    # Normalize data
+    y_observation_tensor_normalized, y_mean, y_std = normalize_data(y_observation_tensor)
+    
+    mean_specie, var_specie, time = interpolation_GP_arn(X_observation_tensor, y_observation_tensor_normalized, type_kernel = kernel_method, type_package = package_method, name_specie = name)
+    plot_GP(X_observation_tensor, y_observation_tensor_normalized, mean_specie, time, var_specie, name, "Prot")
+
+    res_prot[name]["X_observation_tensor"] = X_observation_tensor
+    res_prot[name]["y_observation_tensor_normalized"] = y_observation_tensor_normalized
+    res_prot[name]["time"] = time
+    res_prot[name]["mean_specie"] = mean_specie
+    res_prot[name]["var_specie"] = var_specie
+    
+
+num_rows = 2  # Nombre de lignes souhaité
+num_cols = -(-len(list_species) // num_rows)  # Calcul du nombre de colonnes nécessaire
+
+# Ajout du subplot à partir du dictionnaire res_rna_seq
+fig, axes = plt.subplots(num_rows, num_cols, figsize=(15, 5*num_rows))
+
+for i, name in enumerate(list_species):
+    row, col = i // num_cols, i % num_cols  # Calcul de la position du subplot dans la grille
+    X_observation_tensor = res_prot[name]["X_observation_tensor"]
+    y_observation_tensor_normalized = res_prot[name]["y_observation_tensor_normalized"]
+    mean_specie = res_prot[name]["mean_specie"]
+    time = res_prot[name]["time"]
+    var_specie = res_prot[name]["var_specie"]
+
+    axes[row, col].scatter(X_observation_tensor, y_observation_tensor_normalized, marker='x', color='black')  # data
+
+    axes[row, col].plot(time, mean_specie.detach().numpy(), color='darkblue', linewidth=2)  # Detach the tensor
+    axes[row, col].fill_between(time, (mean_specie - 2 * torch.sqrt(var_specie)).detach().numpy(),
+                                (mean_specie + 2 * torch.sqrt(var_specie)).detach().numpy(),
+                                alpha=.2, color='darkblue')
+    axes[row, col].set_xlabel('Time $t$ (hours)')
+    axes[row, col].set_ylabel('Concentration (nmol/L)')
+    axes[row, col].set_title(str(name))
+
+# Supprimer les sous-graphiques inutilisés
+for i in range(len(list_species), num_rows * num_cols):
+    fig.delaxes(axes.flatten()[i])
+
+fig.tight_layout()
+plt.savefig("results/GP_Prot.png", dpi=300)
+plt.show()
+    
+
     
     
