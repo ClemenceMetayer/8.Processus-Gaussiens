@@ -24,12 +24,12 @@ def interpolation_GP_arn(X_observation, y_observation, type_kernel, type_package
     if type_package == "Pytorch" :
         
         if type_kernel == "Normal" :
-            k_per = ScaleKernel(PeriodicKernel(lengthscale_constraint=10)) 
+            k_per = ScaleKernel(PeriodicKernel()) 
             model_per = SingleTaskGP(X_observation, y_observation,
                                  covar_module=k_per)
             
         elif type_kernel == "Range" :
-            k_per = ScaleKernel(PeriodicKernel(period_length_constraint=Interval(15, 45), lengthscale=10)) # Scale kernel adds the amplitude hyperparameter to the kernel
+            k_per = ScaleKernel(PeriodicKernel(period_length_constraint=Interval(10, 45))) # Scale kernel adds the amplitude hyperparameter to the kernel
             model_per = SingleTaskGP(X_observation, y_observation,
                                  covar_module=k_per)
             
@@ -37,12 +37,12 @@ def interpolation_GP_arn(X_observation, y_observation, type_kernel, type_package
             k_per = ScaleKernel(PeriodicKernel()) # Scale kernel adds the amplitude hyperparameter to the kernel
             model_per = SingleTaskGP(X_observation, y_observation, covar_module=k_per)
             # fixing the period hyperparameter
-            model_per.covar_module.base_kernel.period_length = 40
+            model_per.covar_module.base_kernel.period_length = 45
             # disabling training for it once it has been fixed. 
             model_per.covar_module.base_kernel.raw_period_length.requires_grad_(False)
             
         elif type_kernel == "Prior" :
-            period_prior= NormalPrior(40, 20)
+            period_prior= NormalPrior(40, 5)
             k_per = ScaleKernel(PeriodicKernel(period_length_prior=period_prior, lengthscale_prior=gpytorch.priors.GammaPrior(concentration=.9, rate=0.5)))
             model_per = SingleTaskGP(X_observation, y_observation, covar_module=k_per)
         
@@ -64,7 +64,7 @@ def interpolation_GP_arn(X_observation, y_observation, type_kernel, type_package
     
     elif type_package == "Sklearn" :
         
-        k = ScaleKernel(RBFKernel(period_length=35)) # Scale kernel adds the amplitude hyperparameter to the kernel
+        k = ScaleKernel(RBFKernel(period_length=45)) # Scale kernel adds the amplitude hyperparameter to the kernel
         model = SingleTaskGP(X_observation, y_observation,
                              covar_module=k)
         
