@@ -42,8 +42,9 @@ def interpolation_GP_arn(X_observation, y_observation, type_kernel, type_package
             model_per.covar_module.base_kernel.raw_period_length.requires_grad_(False)
             
         elif type_kernel == "Prior" :
-            period_prior= NormalPrior(40, 5)
-            k_per = ScaleKernel(PeriodicKernel(period_length_prior=period_prior, lengthscale_prior=gpytorch.priors.GammaPrior(concentration=.9, rate=0.5)))
+            #period_prior= NormalPrior(40, 5)
+            #k_per = ScaleKernel(PeriodicKernel(period_length_prior=period_prior, lengthscale_prior=gpytorch.priors.GammaPrior(concentration=.9, rate=0.5)))
+            k_per = ScaleKernel(PeriodicKernel(period_length_constraint=Interval(10, 50), lengthscale_prior=gpytorch.priors.GammaPrior(concentration=2, rate=0.5)))
             model_per = SingleTaskGP(X_observation, y_observation, covar_module=k_per)
         
         mll_per = ExactMarginalLogLikelihood(model_per.likelihood, model_per)
@@ -97,7 +98,7 @@ with open('data/Jeu_9/data/data_dict_concentration_cc.dat', 'rb') as fichier:
     
 list_species = ["ARNTL", "CLOCK", "CRY1", "CRY2", "NR1D1", "PER1", "PER2", "PER3", "RORA"]
 X_observation = rna_seq_data["CTs"]*3
-kernel_method = "Range"
+kernel_method = "Prior"
 package_method = "Pytorch"
 
 res_rna_seq = {name : {"X_observation_tensor" :{}, "y_observation_tensor_normalized" :{}, "time" :{}, "mean_specie":{}, "var_specie":{}} for name in list_species}
@@ -143,7 +144,7 @@ with open('data/dict_comparison', 'rb') as fichier:
     prot_data = pkl.load(fichier)
     
 list_species = list(prot_data.keys())
-kernel_method = "Range"
+kernel_method = "Prior"
 package_method = "Pytorch"
 
 res_prot = {name : {"X_observation_tensor" :{}, "y_observation_tensor_normalized" :{}, "time" :{}, "mean_specie":{}, "var_specie":{}} for name in list_species}
